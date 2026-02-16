@@ -25,22 +25,12 @@ const Footer = () => {
                   Стоимость
                 </Link>
               </li>
-              <li>
-                <Link to="/about" className="hover:text-white transition-colors">
-                  О нас
-                </Link>
-              </li>
             </ul>
           </div>
 
           <div>
             <h4 className="font-semibold mb-4">Информация</h4>
             <ul className="space-y-2 text-gray-400">
-              <li>
-                <Link to="/contact" className="hover:text-white transition-colors">
-                  Контакты
-                </Link>
-              </li>
               <li>
                 <a href="#" className="hover:text-white transition-colors">
                   Правила посещения

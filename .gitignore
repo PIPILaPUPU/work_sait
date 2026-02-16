@@ -31,6 +31,14 @@ build/
 bin/
 out/
 
+# Node modules (for React client)
+node_modules/
+cmd/client/node_modules/
+
+# Windows reserved names
+nul
+cmd/client/nul
+
 # Environment variables
 .env
 .env.local
