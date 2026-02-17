@@ -12,6 +12,7 @@ export interface Group {
 export interface Booking {
   id: string
   groupId: string
+  planId: string
   participantName: string
   participantPhone: string
   participantEmail: string

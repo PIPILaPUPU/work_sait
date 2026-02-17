@@ -1,11 +1,13 @@
-import { createContext, useContext, useState, ReactNode } from 'react'
-import { Booking } from '../types/group'
-import { BookingFormData } from '../components/BookingModal'
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react'
+import { Group } from '../types/group'
+import { createBooking, getGroups, CreateBookingRequest } from '../api/booking'
 
 interface BookingsContextType {
-  bookings: Booking[]
-  addBooking: (booking: Booking) => void
-  removeBooking: (bookingId: string) => void
+  groups: Group[]
+  isLoading: boolean
+  error: string | null
+  fetchGroups: () => Promise<void>
+  createBooking: (data: CreateBookingRequest) => Promise<void>
 }
 
 const BookingsContext = createContext<BookingsContextType | undefined>(undefined)
@@ -23,18 +25,42 @@ interface BookingsProviderProps {
 }
 
 export const BookingsProvider = ({ children }: BookingsProviderProps) => {
-  const [bookings, setBookings] = useState<Booking[]>([])
+  const [groups, setGroups] = useState<Group[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-  const addBooking = (booking: Booking) => {
-    setBookings((prev) => [...prev, booking])
+  const fetchGroups = async () => {
+    try {
+      setError(null)
+      const data = await getGroups()
+      setGroups(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Не удалось загрузить группы')
+      setGroups([])
+    } finally {
+      setIsLoading(false)
+    }
   }
 
-  const removeBooking = (bookingId: string) => {
-    setBookings((prev) => prev.filter((b) => b.id !== bookingId))
+  const handleCreateBooking = async (data: CreateBookingRequest) => {
+    await createBooking(data)
+    await fetchGroups()
   }
+
+  useEffect(() => {
+    fetchGroups()
+  }, [])
 
   return (
-    <BookingsContext.Provider value={{ bookings, addBooking, removeBooking }}>
+    <BookingsContext.Provider
+      value={{
+        groups,
+        isLoading,
+        error,
+        fetchGroups,
+        createBooking: handleCreateBooking,
+      }}
+    >
       {children}
     </BookingsContext.Provider>
   )

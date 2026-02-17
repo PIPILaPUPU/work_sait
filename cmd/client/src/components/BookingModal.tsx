@@ -1,21 +1,27 @@
 import { useState, FormEvent } from 'react'
 import { Group } from '../types/group'
+import { GROUP_PLANS } from '../types/pricing'
+import SubscriptionSelect from './SubscriptionSelect'
 
 interface BookingModalProps {
   group: Group | null
   isOpen: boolean
   onClose: () => void
-  onConfirm: (group: Group, bookingData: BookingFormData) => void
+  onConfirm: (group: Group, bookingData: BookingFormData) => void | Promise<void>
 }
 
 export interface BookingFormData {
+  planId: string
   participantName: string
   participantPhone: string
   participantEmail: string
 }
 
+const DEFAULT_PLAN_ID = 'group-single'
+
 const BookingModal = ({ group, isOpen, onClose, onConfirm }: BookingModalProps) => {
   const [formData, setFormData] = useState<BookingFormData>({
+    planId: DEFAULT_PLAN_ID,
     participantName: '',
     participantPhone: '',
     participantEmail: '',
@@ -47,18 +53,22 @@ const BookingModal = ({ group, isOpen, onClose, onConfirm }: BookingModalProps) 
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (validateForm()) {
-      onConfirm(group, formData)
-      setFormData({ participantName: '', participantPhone: '', participantEmail: '' })
-      setErrors({})
-      onClose()
+      try {
+        await onConfirm(group, formData)
+        setFormData({ planId: DEFAULT_PLAN_ID, participantName: '', participantPhone: '', participantEmail: '' })
+        setErrors({})
+        onClose()
+      } catch {
+        // Ошибка — остаёмся в модалке, родитель уже показал alert
+      }
     }
   }
 
   const handleClose = () => {
-    setFormData({ participantName: '', participantPhone: '', participantEmail: '' })
+    setFormData({ planId: DEFAULT_PLAN_ID, participantName: '', participantPhone: '', participantEmail: '' })
     setErrors({})
     onClose()
   }
@@ -83,6 +93,14 @@ const BookingModal = ({ group, isOpen, onClose, onConfirm }: BookingModalProps) 
           <p className="text-sm text-gray-600 mb-1">Группа:</p>
           <p className="font-semibold text-gray-900">{group.time}</p>
           <p className="text-sm text-gray-600">Инструктор: {group.instructor}</p>
+        </div>
+
+        <div className="mb-6">
+          <SubscriptionSelect
+            plans={GROUP_PLANS}
+            value={formData.planId}
+            onChange={(planId) => setFormData({ ...formData, planId })}
+          />
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">

@@ -1,31 +1,20 @@
 import { useState, useMemo } from 'react'
-import { Group, GROUP_SCHEDULE, DAY_NAMES, Booking } from '../types/group'
+import { Group, DAY_NAMES } from '../types/group'
 import GroupCard from '../components/GroupCard'
 import BookingModal, { BookingFormData } from '../components/BookingModal'
 import { useBookings } from '../context/BookingsContext'
 
 const GroupsPage = () => {
-  const { bookings, addBooking } = useBookings()
+  const { groups, isLoading, error, createBooking } = useBookings()
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [filterDay, setFilterDay] = useState<'all' | 'thursday' | 'saturday' | 'sunday'>('all')
 
-  // Обновляем группы с учетом текущих записей
-  const groupsWithBookings = useMemo(() => {
-    return GROUP_SCHEDULE.map((group) => {
-      const groupBookings = bookings.filter((b) => b.groupId === group.id)
-      return {
-        ...group,
-        currentParticipants: groupBookings.length,
-      }
-    })
-  }, [bookings])
-
   // Фильтруем группы по дню
   const filteredGroups = useMemo(() => {
-    if (filterDay === 'all') return groupsWithBookings
-    return groupsWithBookings.filter((g) => g.day === filterDay)
-  }, [groupsWithBookings, filterDay])
+    if (filterDay === 'all') return groups
+    return groups.filter((g) => g.day === filterDay)
+  }, [groups, filterDay])
 
   // Группируем по дням для отображения
   const groupedByDay = useMemo(() => {
@@ -44,24 +33,44 @@ const GroupsPage = () => {
     setIsModalOpen(true)
   }
 
-  const handleConfirmBooking = (group: Group, bookingData: BookingFormData) => {
-    const newBooking: Booking = {
-      id: `booking-${Date.now()}-${Math.random()}`,
-      groupId: group.id,
-      ...bookingData,
-      bookingDate: new Date().toISOString(),
+  const handleConfirmBooking = async (group: Group, bookingData: BookingFormData) => {
+    try {
+      await createBooking({
+        groupId: group.id,
+        planId: bookingData.planId,
+        participantName: bookingData.participantName,
+        participantPhone: bookingData.participantPhone,
+        participantEmail: bookingData.participantEmail,
+      })
+      setIsModalOpen(false)
+      setSelectedGroup(null)
+      alert(`Вы успешно записались на группу ${group.time}!`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Ошибка при записи'
+      alert(msg)
     }
-    addBooking(newBooking)
-    setIsModalOpen(false)
-    setSelectedGroup(null)
-    
-    // Показываем уведомление об успешной записи
-    alert(`Вы успешно записались на группу ${group.time}!`)
   }
 
   const handleCloseModal = () => {
     setIsModalOpen(false)
     setSelectedGroup(null)
+  }
+
+  if (isLoading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <p className="text-center text-gray-600">Загрузка групп...</p>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <p className="text-center text-red-600 mb-4">{error}</p>
+        <p className="text-center text-sm text-gray-500">Убедитесь, что сервер запущен на localhost:8080</p>
+      </div>
+    )
   }
 
   return (

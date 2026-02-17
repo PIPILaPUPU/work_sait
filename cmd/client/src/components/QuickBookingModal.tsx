@@ -1,18 +1,21 @@
 import { useState, FormEvent, useMemo } from 'react'
-import { Group, GROUP_SCHEDULE, DAY_NAMES, Booking } from '../types/group'
+import { Group, DAY_NAMES } from '../types/group'
+import { GROUP_PLANS } from '../types/pricing'
 import { BookingFormData } from './BookingModal'
+import SubscriptionSelect from './SubscriptionSelect'
 
 interface QuickBookingModalProps {
   isOpen: boolean
   onClose: () => void
-  onConfirm: (group: Group, bookingData: BookingFormData) => void
-  bookings?: Booking[]
+  onConfirm: (group: Group, bookingData: BookingFormData) => void | Promise<void>
+  groups: Group[]
 }
 
-const QuickBookingModal = ({ isOpen, onClose, onConfirm, bookings = [] }: QuickBookingModalProps) => {
+const QuickBookingModal = ({ isOpen, onClose, onConfirm, groups }: QuickBookingModalProps) => {
   const [selectedDay, setSelectedDay] = useState<'thursday' | 'saturday' | 'sunday' | null>(null)
   const [selectedGroup, setSelectedGroup] = useState<Group | null>(null)
   const [formData, setFormData] = useState<BookingFormData>({
+    planId: 'group-single',
     participantName: '',
     participantPhone: '',
     participantEmail: '',
@@ -20,22 +23,11 @@ const QuickBookingModal = ({ isOpen, onClose, onConfirm, bookings = [] }: QuickB
   const [errors, setErrors] = useState<Partial<BookingFormData>>({})
   const [step, setStep] = useState<'day' | 'time' | 'form'>('day')
 
-  // Обновляем группы с учетом текущих записей
-  const groupsWithBookings = useMemo(() => {
-    return GROUP_SCHEDULE.map((group) => {
-      const groupBookings = bookings.filter((b) => b.groupId === group.id)
-      return {
-        ...group,
-        currentParticipants: groupBookings.length,
-      }
-    })
-  }, [bookings])
-
-  // Фильтруем группы по выбранному дню
+  // Фильтруем группы по выбранному дню (groups уже содержат currentParticipants с API)
   const availableGroups = useMemo(() => {
     if (!selectedDay) return []
-    return groupsWithBookings.filter((g) => g.day === selectedDay)
-  }, [selectedDay, groupsWithBookings])
+    return groups.filter((g) => g.day === selectedDay)
+  }, [selectedDay, groups])
 
   const validateForm = (): boolean => {
     const newErrors: Partial<BookingFormData> = {}
@@ -74,12 +66,11 @@ const QuickBookingModal = ({ isOpen, onClose, onConfirm, bookings = [] }: QuickB
     setStep('form')
   }
 
-  const handleSubmit = (e: FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault()
     if (validateForm() && selectedGroup) {
-      onConfirm(selectedGroup, formData)
-      // Сброс формы
-      setFormData({ participantName: '', participantPhone: '', participantEmail: '' })
+      await onConfirm(selectedGroup, formData)
+      setFormData({ planId: 'group-single', participantName: '', participantPhone: '', participantEmail: '' })
       setErrors({})
       setSelectedDay(null)
       setSelectedGroup(null)
@@ -89,7 +80,7 @@ const QuickBookingModal = ({ isOpen, onClose, onConfirm, bookings = [] }: QuickB
   }
 
   const handleClose = () => {
-    setFormData({ participantName: '', participantPhone: '', participantEmail: '' })
+    setFormData({ planId: 'group-single', participantName: '', participantPhone: '', participantEmail: '' })
     setErrors({})
     setSelectedDay(null)
     setSelectedGroup(null)
@@ -131,7 +122,7 @@ const QuickBookingModal = ({ isOpen, onClose, onConfirm, bookings = [] }: QuickB
             <h3 className="text-lg font-semibold text-gray-900 mb-4">Выберите день</h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {(['thursday', 'saturday', 'sunday'] as const).map((day) => {
-                const dayGroups = groupsWithBookings.filter((g) => g.day === day)
+                const dayGroups = groups.filter((g) => g.day === day)
                 const availableCount = dayGroups.filter(
                   (g) => g.currentParticipants < g.maxParticipants
                 ).length
@@ -246,6 +237,15 @@ const QuickBookingModal = ({ isOpen, onClose, onConfirm, bookings = [] }: QuickB
               <p className="text-sm text-gray-600 mt-2">
                 Свободных мест: {selectedGroup.maxParticipants - selectedGroup.currentParticipants}
               </p>
+            </div>
+
+            <div className="mb-6">
+              <SubscriptionSelect
+                plans={GROUP_PLANS}
+                value={formData.planId}
+                onChange={(planId) => setFormData({ ...formData, planId })}
+                compact
+              />
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">

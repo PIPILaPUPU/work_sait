@@ -8,23 +8,28 @@ import { BookingFormData } from './BookingModal'
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isQuickBookingOpen, setIsQuickBookingOpen] = useState(false)
-  const { bookings, addBooking } = useBookings()
+  const { groups, createBooking } = useBookings()
 
   const navItems = [
     { path: '/groups', label: 'Группы' },
     { path: '/pricing', label: 'Стоимость' },
   ]
 
-  const handleQuickBookingConfirm = (group: Group, bookingData: BookingFormData) => {
-    const newBooking = {
-      id: `booking-${Date.now()}-${Math.random()}`,
-      groupId: group.id,
-      ...bookingData,
-      bookingDate: new Date().toISOString(),
+  const handleQuickBookingConfirm = async (group: Group, bookingData: BookingFormData) => {
+    try {
+      await createBooking({
+        groupId: group.id,
+        planId: bookingData.planId,
+        participantName: bookingData.participantName,
+        participantPhone: bookingData.participantPhone,
+        participantEmail: bookingData.participantEmail,
+      })
+      setIsQuickBookingOpen(false)
+      alert(`Вы успешно записались на группу ${group.time}!`)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Ошибка при записи'
+      alert(msg)
     }
-    addBooking(newBooking)
-    setIsQuickBookingOpen(false)
-    alert(`Вы успешно записались на группу ${group.time}!`)
   }
 
   return (
@@ -111,7 +116,7 @@ const Header = () => {
         isOpen={isQuickBookingOpen}
         onClose={() => setIsQuickBookingOpen(false)}
         onConfirm={handleQuickBookingConfirm}
-        bookings={bookings}
+        groups={groups}
       />
     </>
   )
